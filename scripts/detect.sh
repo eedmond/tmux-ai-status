@@ -78,7 +78,7 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
     last5=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
     content=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
     state="waiting"
-    if printf '%s\n' "$last5" | grep -qE '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]'; then
+    if printf '%s\n' "$last5" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
         state="running"
     elif printf '%s\n' "$content" | grep -qE \
         '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then

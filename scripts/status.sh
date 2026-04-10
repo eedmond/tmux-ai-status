@@ -35,7 +35,7 @@ while IFS=' ' read -r pane_id pid cmd; do
 
     content=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
     last10=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
-    if printf '%s\n' "$content" | grep -qE '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]'; then
+    if printf '%s\n' "$content" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
         running=$((running + 1))
     elif printf '%s\n' "$last10" | grep -qE \
         '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
