@@ -12,6 +12,11 @@ SKY=$'\e[38;2;137;220;235m'
 DIM=$'\e[38;2;88;91;112m'
 RESET=$'\e[0m'
 
+CACHE="${HOME}/.cache/tmux-ai-status/panel-list"
+mkdir -p "${HOME}/.cache/tmux-ai-status"
+CACHE_TMP="${CACHE}.tmp.$$"
+trap 'rm -f "$CACHE_TMP"' EXIT
+
 "$PLUGIN_DIR/scripts/detect.sh" | awk -F'\t' \
     -v green="$GREEN" -v gray="$GRAY" -v yellow="$YELLOW" \
     -v peach="$PEACH" -v sky="$SKY" -v dim="$DIM" -v r="$RESET" '
@@ -33,4 +38,7 @@ RESET=$'\e[0m'
 
     printf "%s\t%s %s  %s %-8s  %-22s  %s\n",
         pane_id, s_icon, s_label, t_icon, t_label, loc, summary_col
-}'
+}' | tee "$CACHE_TMP"
+
+# Only promote to stable cache if tee completed cleanly (not killed by SIGPIPE)
+[ "${PIPESTATUS[2]}" -eq 0 ] && mv "$CACHE_TMP" "$CACHE"

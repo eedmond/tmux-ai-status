@@ -20,7 +20,8 @@ get_claude_session_id() {
     [ ! -d "$sessions_dir" ] && return
     for check_pid in "$@"; do
         local sf
-        sf=$(grep -rl "\"pid\":$check_pid" "$sessions_dir" 2>/dev/null | head -1)
+        # Check newest files first — the active session is almost always recently modified.
+        sf=$(ls -t "$sessions_dir"/*.json 2>/dev/null | xargs grep -l "\"pid\":$check_pid" 2>/dev/null | head -1)
         if [ -n "$sf" ]; then
             python3 -c "
 import json

@@ -8,6 +8,7 @@
 # Usage: hook.sh <EventName>
 #   EventName: UserPromptSubmit | PreToolUse | Stop | Notification
 
+PLUGIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 STATE_DIR="${TMPDIR:-/tmp}/claude-tmux-state"
 mkdir -p "$STATE_DIR"
 
@@ -46,3 +47,11 @@ except: pass
         esac
         ;;
 esac
+
+# Warm the panel list cache in the background after any state change.
+# Lock file prevents piling up concurrent refreshes from rapid-fire hook events.
+CACHE_LOCK="${TMPDIR:-/tmp}/ai-panel-cache.lock"
+if [ ! -f "$CACHE_LOCK" ]; then
+    touch "$CACHE_LOCK"
+    ("$PLUGIN_DIR/scripts/panel_list.sh" > /dev/null 2>&1; rm -f "$CACHE_LOCK") &
+fi
