@@ -17,7 +17,7 @@ mkdir -p "${HOME}/.cache/tmux-ai-status"
 CACHE_TMP="${CACHE}.tmp.$$"
 trap 'rm -f "$CACHE_TMP"' EXIT
 
-"$PLUGIN_DIR/scripts/detect.sh" | awk -F'\t' \
+"$PLUGIN_DIR/scripts/detect.sh" | sort -t$'\t' -k7,7 | awk -F'\t' \
     -v green="$GREEN" -v gray="$GRAY" -v yellow="$YELLOW" \
     -v peach="$PEACH" -v sky="$SKY" -v dim="$DIM" -v r="$RESET" '
 {
