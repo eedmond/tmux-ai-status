@@ -5,8 +5,7 @@
 PLUGIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 TMPFILE="$1"
 
-# ── Catppuccin-aligned ANSI colors ──────────────────────────────────────────
-BLUE=$'\e[38;2;137;180;250m'    # #89b4fa — label / blue
+BLUE=$'\e[38;2;137;180;250m'
 RESET=$'\e[0m'
 
 LIST=$("$PLUGIN_DIR/scripts/panel_list.sh")
@@ -20,7 +19,7 @@ if [ -z "$LIST" ]; then
     exit 0
 fi
 
-HEADER="${BLUE}enter/ctrl-→${RESET}: jump to pane   ${BLUE}ctrl-p/n${RESET}: up/down   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
+HEADER="${BLUE}enter/ctrl-→${RESET}: jump   ${BLUE}ctrl-l/h${RESET}: focus preview/list   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
 
 # Pick a random available port for fzf --listen
 PORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('',0)); print(s.getsockname()[1]); s.close()" 2>/dev/null)
@@ -28,7 +27,6 @@ PORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('',0)); print(s.get
 # Background loop: every 3s reload list + refresh preview via fzf HTTP API
 if [ -n "$PORT" ]; then
     (
-        # Give fzf a moment to start listening
         sleep 1
         while true; do
             curl -s -X POST "http://localhost:$PORT" \
@@ -55,11 +53,14 @@ SELECTED=$(echo "$LIST" | fzf \
     --prompt=" Assistants › " \
     --header="$HEADER" \
     --header-first \
-    --preview="tmux capture-pane -t {1} -p -e 2>/dev/null" \
+    --preview='tmux capture-pane -t {1} -p 2>/dev/null | tail -200' \
     --preview-window="right:55%:wrap:border-left" \
     --cycle \
-    --bind="ctrl-p:up,ctrl-n:down" \
+    --bind='j:up,k:down' \
+    --bind='ctrl-p:up,ctrl-n:down' \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/panel_list.sh\")" \
+    --bind='ctrl-l:unbind(j,k)+bind(j:preview-down,k:preview-up)+change-prompt( Preview › )' \
+    --bind='ctrl-h:unbind(j,k)+bind(j:up,k:down)+change-prompt( Assistants › )' \
     --bind="ctrl-right:execute(echo {1} > \"$TMPFILE\")+abort" \
 )
 
