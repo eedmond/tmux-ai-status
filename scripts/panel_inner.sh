@@ -7,6 +7,7 @@ TMPFILE="$1"
 
 # ── Catppuccin-aligned ANSI colors ──────────────────────────────────────────
 GREEN=$'\e[38;2;166;227;161m'   # #a6e3a1 — running
+YELLOW=$'\e[38;2;249;226;175m'  # #f9e2af — asking
 GRAY=$'\e[38;2;108;112;134m'    # #6c7086 — idle
 BLUE=$'\e[38;2;137;180;250m'    # #89b4fa — label / claude icon
 PEACH=$'\e[38;2;250;179;135m'   # #fab387 — claude
@@ -33,13 +34,14 @@ tool_color() {
 
 format_list() {
     "$PLUGIN_DIR/scripts/detect.sh" | awk -F'\t' \
-        -v green="$GREEN" -v gray="$GRAY" \
+        -v green="$GREEN" -v gray="$GRAY" -v yellow="$YELLOW" \
         -v peach="$PEACH" -v sky="$SKY" -v dim="$DIM" -v r="$RESET" '
     {
         pane_id=$1; ai=$6; state=$7; summary=$8
         loc = $2 ":" $3 " [" $4 "." $5 "]"
 
         if (state == "running")  { s_icon = green "▶" r; s_label = green "running" r }
+        else if (state == "asking") { s_icon = yellow "?" r; s_label = yellow "asking " r }
         else                     { s_icon = gray  "○" r; s_label = gray  "idle   " r }
 
         if (ai == "claude")      { t_icon = peach "◉" r; t_color = peach }

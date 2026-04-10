@@ -70,14 +70,20 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
 
     [ -z "$ai_type" ] && continue
 
-    # State detection: capture only the last 3 lines so old spinner chars
-    # scrolled into history don't trigger false "running" matches.
-    # ◒ and ↓ are excluded — they appear in Claude's idle prompt UI.
-    content=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
+    # State detection.
+    # - Capture 3 lines for "running" (tight window avoids old spinners in history)
+    # - Capture 10 lines for "asking" (question/choices may span several lines)
+    last3=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
+    content=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
     state="idle"
-    if printf '%s' "$content" | grep -qE \
+    if printf '%s\n' "$last3" | grep -qE \
         '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
         state="running"
+    elif printf '%s\n' "$content" | grep -qE \
+        '^[[:space:]]*❯[[:space:]]|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+        # ❯ at line start = interactive selection menu (tool permissions, choices)
+        # [y/n] variants = explicit confirmation prompt
+        state="asking"
     fi
 
     # Summary: Claude only (reads ~/.claude/sessions + history.jsonl)
