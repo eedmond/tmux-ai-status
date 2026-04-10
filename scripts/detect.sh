@@ -42,8 +42,8 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
     content=$(tmux capture-pane -t "$pane_id" -p -S -6 2>/dev/null)
     state="waiting"
     # Running: spinner chars or common "thinking" phrases
-    if printf '%s' "$content" | grep -qP \
-        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking…|Working…|Running\b|◒|↓'; then
+    if printf '%s' "$content" | grep -qE \
+        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]|◒|↓'; then
         state="running"
     fi
 
