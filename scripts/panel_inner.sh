@@ -37,7 +37,7 @@ if [ -z "$LIST" ]; then
     exit 0
 fi
 
-HEADER="${BLUE}enter${RESET}: jump to pane   ${BLUE}ctrl-p${RESET}: open in popup   ${BLUE}ctrl-r${RESET}: refresh"
+HEADER="${BLUE}enter${RESET}: jump   ${BLUE}ctrl-o${RESET}: open in popup   ${BLUE}ctrl-p/n${RESET}: up/down   ${BLUE}ctrl-r${RESET}: refresh"
 
 RESULT=$(echo "$LIST" | fzf \
     --ansi \
@@ -48,7 +48,8 @@ RESULT=$(echo "$LIST" | fzf \
     --header-first \
     --preview="tmux capture-pane -t \$(echo {1}) -p -S -50 2>/dev/null" \
     --preview-window="right:55%:wrap:border-left" \
-    --expect="ctrl-p,ctrl-r" \
+    --expect="ctrl-o,ctrl-r" \
+    --bind="ctrl-p:up,ctrl-n:down" \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/detect.sh\" | awk -F'\t' \
         '{if(\$7==\"running\") icon=\"▶ running\"; \
           else if(\$7==\"waiting\") icon=\"◎ waiting\"; \
@@ -64,7 +65,7 @@ PANE_ID=$(echo "$SELECTED" | cut -d$'\t' -f1)
 
 [ -z "$PANE_ID" ] && exit 0
 
-if [ "$KEY" = "ctrl-p" ]; then
+if [ "$KEY" = "ctrl-o" ]; then
     echo "popup" > "$TMPFILE"
 else
     echo "jump"  > "$TMPFILE"
