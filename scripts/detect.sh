@@ -48,11 +48,13 @@ tmux list-panes -a \
 while read -r pane_id session window_name window_idx pane_idx pid cmd; do
 
     ai_type=""
+    ai_pid=""
     child_pids=()
 
     # Fast path: pane_current_command matches directly (e.g. "gemini")
     if echo "$cmd" | grep -qiE "^($AI_PATTERN)$"; then
         ai_type="$cmd"
+        ai_pid="$pid"
     else
         # Slower path: check pane_pid and its direct children.
         # pane_pid is the shell for normally-launched panes; the AI process
@@ -63,6 +65,7 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
             if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
                 ai_type=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
                     grep -oiE "($AI_PATTERN)$" | head -1 | tr '[:upper:]' '[:lower:]')
+                ai_pid="$check_pid"
                 break
             fi
         done
@@ -71,18 +74,30 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
     [ -z "$ai_type" ] && continue
 
     # State detection.
-    # Running: only braille spinner chars are reliable — text like "Thinking...",
-    # "Working...", "Running..." appears in Claude's output after completion.
-    # Spinners are animation-only and won't appear in regular output text.
-    # Capture 5 lines: spinner may be pushed up slightly by streaming output.
-    last5=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
-    content=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
+    visible=$(tmux capture-pane -t "$pane_id" -p 2>/dev/null)
     state="waiting"
-    if printf '%s\n' "$last5" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
-        state="running"
-    elif printf '%s\n' "$content" | grep -qE \
-        '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
-        state="asking"
+    if [ "$ai_type" = "claude" ]; then
+        # Claude: check last 2 lines (status bar area) for specific text.
+        last1=$(printf '%s\n' "$visible" | tail -1)
+        last2=$(printf '%s\n' "$visible" | tail -2)
+        last3=$(printf '%s\n' "$visible" | tail -3)
+        if printf '%s\n' "$last2" | grep -qi "esc to interrupt"; then
+            state="running"
+        elif printf '%s\n' "$last1" | grep -qi "enter to select\|esc to cancel"; then
+            state="asking"
+        elif printf '%s\n' "$last3" | grep -qE \
+            '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+            state="asking"
+        fi
+    else
+        # Gemini and others: braille spinner detection.
+        last5=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
+        if printf '%s\n' "$last5" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
+            state="running"
+        elif printf '%s\n' "$visible" | grep -qE \
+            '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+            state="asking"
+        fi
     fi
 
     # Summary: Claude only (reads ~/.claude/sessions + history.jsonl)

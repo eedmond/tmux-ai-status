@@ -33,15 +33,47 @@ while IFS=' ' read -r pane_id pid cmd; do
 
     total=$((total + 1))
 
-    content=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
-    last10=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
-    if printf '%s\n' "$content" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
-        running=$((running + 1))
-    elif printf '%s\n' "$last10" | grep -qE \
-        '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
-        asking=$((asking + 1))
+    visible=$(tmux capture-pane -t "$pane_id" -p 2>/dev/null)
+
+    # Determine AI type to pick the right detection strategy
+    ai_type=""
+    if echo "$cmd" | grep -qiE "^($AI_PATTERN)$"; then
+        ai_type=$(echo "$cmd" | tr '[:upper:]' '[:lower:]')
     else
-        waiting=$((waiting + 1))
+        for check_pid in "$pid" $(pgrep -P "$pid" 2>/dev/null); do
+            cmdline=$(ps -o args= -p "$check_pid" 2>/dev/null) || continue
+            if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
+                ai_type=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
+                    grep -oiE "($AI_PATTERN)$" | head -1 | tr '[:upper:]' '[:lower:]')
+                break
+            fi
+        done
+    fi
+
+    if [ "$ai_type" = "claude" ]; then
+        last1=$(printf '%s\n' "$visible" | tail -1)
+        last2=$(printf '%s\n' "$visible" | tail -2)
+        last3=$(printf '%s\n' "$visible" | tail -3)
+        if printf '%s\n' "$last2" | grep -qi "esc to interrupt"; then
+            running=$((running + 1))
+        elif printf '%s\n' "$last1" | grep -qi "enter to select\|esc to cancel"; then
+            asking=$((asking + 1))
+        elif printf '%s\n' "$last3" | grep -qE \
+            '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+            asking=$((asking + 1))
+        else
+            waiting=$((waiting + 1))
+        fi
+    else
+        last5=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
+        if printf '%s\n' "$last5" | grep -qE '^[[:space:]]*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏][[:space:]]'; then
+            running=$((running + 1))
+        elif printf '%s\n' "$visible" | grep -qE \
+            '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+            asking=$((asking + 1))
+        else
+            waiting=$((waiting + 1))
+        fi
     fi
 
 done < <(tmux list-panes -a \
