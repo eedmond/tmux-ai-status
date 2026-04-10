@@ -46,7 +46,7 @@ SELECTED=$("${LIST_SOURCE[@]}" | fzf \
     --prompt=" Assistants > " \
     --header="$HEADER" \
     --header-first \
-    --preview='while :; do printf "\033[H\033[2J"; tmux capture-pane -t {1} -p -e 2>/dev/null | tail -n "$FZF_PREVIEW_LINES"; sleep 0.2; done' \
+    --preview='while :; do printf "\033[H"; tmux capture-pane -t {1} -p -e 2>/dev/null | tail -n "$FZF_PREVIEW_LINES"; printf "\033[J"; sleep 0.2; done' \
     --preview-window="right:55%:wrap:border-left:noinfo" \
     --cycle \
     --bind='j:up,k:down' \
