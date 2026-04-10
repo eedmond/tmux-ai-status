@@ -57,7 +57,7 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
         # Slower path: check pane_pid and its direct children.
         # pane_pid is the shell for normally-launched panes; the AI process
         # is a child (or the pid itself if launched without a shell).
-        mapfile -t child_pids < <(pgrep -P "$pid" 2>/dev/null)
+        child_pids=($(pgrep -P "$pid" 2>/dev/null))
         for check_pid in "$pid" "${child_pids[@]}"; do
             cmdline=$(ps -o args= -p "$check_pid" 2>/dev/null) || continue
             if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
