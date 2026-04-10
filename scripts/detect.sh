@@ -24,8 +24,10 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
         # Slower path: check the full process cmdline (handles Node-based CLIs
         # like Claude Code where pane_current_command reports "node")
         cmdline=$(ps -o args= -p "$pid" 2>/dev/null)
-        matched=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)( |\$)" | \
-            grep -oiE "$AI_PATTERN" | head -1)
+        # Match the AI tool name after a slash or at start-of-string.
+        # No trailing requirement — handles paths like .../claude-code/cli.js
+        matched=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
+            grep -oiE "($AI_PATTERN)$" | head -1 | tr '[:upper:]' '[:lower:]')
         [ -n "$matched" ] && ai_type="$matched"
     fi
 

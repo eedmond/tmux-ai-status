@@ -19,7 +19,7 @@ while IFS=' ' read -r pane_id pid cmd; do
     else
         # Slower check: inspect full cmdline for Node-based CLIs
         cmdline=$(ps -o args= -p "$pid" 2>/dev/null)
-        if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)( |\$)"; then
+        if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
             matched=1
         fi
     fi
