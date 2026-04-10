@@ -77,7 +77,7 @@ SELECTED=$(echo "$LIST" | fzf \
     --prompt=" Assistants › " \
     --header="$HEADER" \
     --header-first \
-    --preview="tmux capture-pane -t {1} -p -S -50 2>/dev/null" \
+    --preview="tmux capture-pane -t {1} -p -S -50 2>/dev/null | tail -50" \
     --preview-window="right:55%:wrap:border-left" \
     --cycle \
     --bind="ctrl-p:up,ctrl-n:down" \
