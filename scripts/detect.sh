@@ -80,9 +80,9 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
         '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
         state="running"
     elif printf '%s\n' "$content" | grep -qE \
-        '^[[:space:]]*❯[[:space:]]|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
-        # ❯ at line start = interactive selection menu (tool permissions, choices)
-        # [y/n] variants = explicit confirmation prompt
+        '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+        # ❯ alone is Claude's generic input cursor; only match when followed by
+        # a known option word (tool permission dialogs, confirmation prompts)
         state="asking"
     fi
 

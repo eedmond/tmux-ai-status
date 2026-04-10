@@ -39,7 +39,7 @@ while IFS=' ' read -r pane_id pid cmd; do
         '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
         running=$((running + 1))
     elif printf '%s\n' "$last10" | grep -qE \
-        '^[[:space:]]*❯[[:space:]]|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
+        '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
         asking=$((asking + 1))
     else
         idle=$((idle + 1))
