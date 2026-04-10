@@ -21,14 +21,19 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
     if echo "$cmd" | grep -qiE "^($AI_PATTERN)$"; then
         ai_type="$cmd"
     else
-        # Slower path: check the full process cmdline (handles Node-based CLIs
-        # like Claude Code where pane_current_command reports "node")
-        cmdline=$(ps -o args= -p "$pid" 2>/dev/null)
-        # Match the AI tool name after a slash or at start-of-string.
-        # No trailing requirement — handles paths like .../claude-code/cli.js
-        matched=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
-            grep -oiE "($AI_PATTERN)$" | head -1 | tr '[:upper:]' '[:lower:]')
-        [ -n "$matched" ] && ai_type="$matched"
+        # Slower path: check pane_pid and its direct children.
+        # For panes launched from a shell, pane_pid is the shell; the AI
+        # process is a child (shell → exec'd into node via claude wrapper).
+        # For panes launched without a shell (e.g. tmux new-session "claude"),
+        # pane_pid IS the node process — covered by the pid itself.
+        for check_pid in "$pid" $(pgrep -P "$pid" 2>/dev/null); do
+            cmdline=$(ps -o args= -p "$check_pid" 2>/dev/null) || continue
+            if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
+                ai_type=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
+                    grep -oiE "($AI_PATTERN)$" | head -1 | tr '[:upper:]' '[:lower:]')
+                break
+            fi
+        done
     fi
 
     [ -z "$ai_type" ] && continue

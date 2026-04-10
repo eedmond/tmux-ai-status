@@ -17,11 +17,15 @@ while IFS=' ' read -r pane_id pid cmd; do
     if echo "$cmd" | grep -qiE "^($AI_PATTERN)$"; then
         matched=1
     else
-        # Slower check: inspect full cmdline for Node-based CLIs
-        cmdline=$(ps -o args= -p "$pid" 2>/dev/null)
-        if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
-            matched=1
-        fi
+        # Check pane_pid and its direct children (pane_pid is the shell;
+        # the AI process is a child exec'd from there)
+        for check_pid in "$pid" $(pgrep -P "$pid" 2>/dev/null); do
+            cmdline=$(ps -o args= -p "$check_pid" 2>/dev/null) || continue
+            if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
+                matched=1
+                break
+            fi
+        done
     fi
 
     [ "$matched" -eq 0 ] && continue
