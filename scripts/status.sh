@@ -8,7 +8,7 @@ AI_PATTERN="${AI_PATTERN:-claude|gemini}"
 
 total=0
 running=0
-waiting=0
+idle=0
 
 while IFS=' ' read -r pane_id pid cmd; do
     matched=0
@@ -37,7 +37,7 @@ while IFS=' ' read -r pane_id pid cmd; do
         '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]|◒|↓'; then
         running=$((running + 1))
     else
-        waiting=$((waiting + 1))
+        idle=$((idle + 1))
     fi
 
 done < <(tmux list-panes -a \
@@ -53,6 +53,6 @@ RESET="#[default]"
 
 output="${BLUE}󱙺 ${total}${RESET}"
 [ "$running" -gt 0 ] && output="${output}  ${GREEN}▶ ${running}${RESET}"
-[ "$waiting" -gt 0 ] && output="${output}  ${YELLOW}◎ ${waiting}${RESET}"
+[ "$idle" -gt 0 ]    && output="${output}  ${YELLOW}○ ${idle}${RESET}"
 
 printf '%s' "$output"

@@ -1,14 +1,46 @@
 #!/usr/bin/env bash
 # detect.sh — scan all tmux panes and emit AI assistant panes as TSV:
-#   pane_id  session  window_name  window_index  pane_index  ai_type  state
+#   pane_id  session  window_name  window_index  pane_index  ai_type  state  summary
 #
 # State heuristics (best-effort from captured pane content):
 #   running  — spinner chars or "Thinking/Working/Running" visible
-#   waiting  — pane alive, no running indicators (at prompt)
-#   idle     — AI process not detected in pane's process tree
+#   idle     — pane alive, no running indicators (at prompt)
 
 AI_PATTERN=$(tmux show-option -gqv @ai_status_processes 2>/dev/null)
 AI_PATTERN="${AI_PATTERN:-claude|gemini}"
+
+# Look up the conversation summary for a Claude pane by matching its PID
+# against ~/.claude/sessions/ and then looking up history.jsonl.
+get_claude_summary() {
+    local sessions_dir="$HOME/.claude/sessions"
+    local history="$HOME/.claude/history.jsonl"
+    [ ! -d "$sessions_dir" ] || [ ! -f "$history" ] && return
+
+    local session_id=""
+    for check_pid in "$@"; do
+        local sf
+        sf=$(grep -rl "\"pid\":$check_pid" "$sessions_dir" 2>/dev/null | head -1)
+        if [ -n "$sf" ]; then
+            session_id=$(python3 -c "
+import json
+try:
+    print(json.load(open('$sf')).get('sessionId', ''))
+except: pass
+" 2>/dev/null)
+            [ -n "$session_id" ] && break
+        fi
+    done
+
+    [ -z "$session_id" ] && return
+
+    grep -F "\"$session_id\"" "$history" 2>/dev/null | tail -1 | python3 -c "
+import json, sys
+try:
+    d = json.loads(sys.stdin.read())
+    print((d.get('display') or '').replace('\n', ' ')[:60])
+except: pass
+" 2>/dev/null
+}
 
 tmux list-panes -a \
     -F "#{pane_id} #{session_name} #{window_name} #{window_index} #{pane_index} #{pane_pid} #{pane_current_command}" \
@@ -16,17 +48,17 @@ tmux list-panes -a \
 while read -r pane_id session window_name window_idx pane_idx pid cmd; do
 
     ai_type=""
+    child_pids=()
 
     # Fast path: pane_current_command matches directly (e.g. "gemini")
     if echo "$cmd" | grep -qiE "^($AI_PATTERN)$"; then
         ai_type="$cmd"
     else
         # Slower path: check pane_pid and its direct children.
-        # For panes launched from a shell, pane_pid is the shell; the AI
-        # process is a child (shell → exec'd into node via claude wrapper).
-        # For panes launched without a shell (e.g. tmux new-session "claude"),
-        # pane_pid IS the node process — covered by the pid itself.
-        for check_pid in "$pid" $(pgrep -P "$pid" 2>/dev/null); do
+        # pane_pid is the shell for normally-launched panes; the AI process
+        # is a child (or the pid itself if launched without a shell).
+        mapfile -t child_pids < <(pgrep -P "$pid" 2>/dev/null)
+        for check_pid in "$pid" "${child_pids[@]}"; do
             cmdline=$(ps -o args= -p "$check_pid" 2>/dev/null) || continue
             if echo "$cmdline" | grep -qiE "(^|[/ ])($AI_PATTERN)"; then
                 ai_type=$(echo "$cmdline" | grep -oiE "(^|[/ ])($AI_PATTERN)" | \
@@ -40,14 +72,19 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
 
     # State detection via captured pane content (last 6 lines)
     content=$(tmux capture-pane -t "$pane_id" -p -S -6 2>/dev/null)
-    state="waiting"
-    # Running: spinner chars or common "thinking" phrases
+    state="idle"
     if printf '%s' "$content" | grep -qE \
         '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]|◒|↓'; then
         state="running"
     fi
 
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    # Summary: Claude only (reads ~/.claude/sessions + history.jsonl)
+    summary=""
+    if [ "$ai_type" = "claude" ]; then
+        summary=$(get_claude_summary "$pid" "${child_pids[@]}")
+    fi
+
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$pane_id" "$session" "$window_name" \
-        "$window_idx" "$pane_idx" "$ai_type" "$state"
+        "$window_idx" "$pane_idx" "$ai_type" "$state" "$summary"
 done

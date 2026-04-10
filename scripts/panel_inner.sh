@@ -7,22 +7,51 @@ TMPFILE="$1"
 
 # ── Catppuccin-aligned ANSI colors ──────────────────────────────────────────
 GREEN=$'\e[38;2;166;227;161m'   # #a6e3a1 — running
-YELLOW=$'\e[38;2;249;226;175m'  # #f9e2af — waiting
 GRAY=$'\e[38;2;108;112;134m'    # #6c7086 — idle
-BLUE=$'\e[38;2;137;180;250m'    # #89b4fa — label
+BLUE=$'\e[38;2;137;180;250m'    # #89b4fa — label / claude icon
+PEACH=$'\e[38;2;250;179;135m'   # #fab387 — claude
+SKY=$'\e[38;2;137;220;235m'     # #89dceb — gemini
+DIM=$'\e[38;2;88;91;112m'       # #585b70 — summary text
 RESET=$'\e[0m'
 
-format_list() {
-    "$PLUGIN_DIR/scripts/detect.sh" | awk -F'\t' -v g="$GREEN" -v y="$YELLOW" \
-        -v gr="$GRAY" -v b="$BLUE" -v r="$RESET" '
-    {
-        if ($7 == "running")       { icon = g "▶ running" r }
-        else if ($7 == "waiting")  { icon = y "◎ waiting" r }
-        else                       { icon = gr "○ idle   " r }
+# Per-tool icon and color
+tool_icon() {
+    case "$1" in
+        claude) printf '%s✦%s' "$PEACH" "$RESET" ;;
+        gemini) printf '%s✧%s' "$SKY"   "$RESET" ;;
+        *)      printf '%s◦%s' "$GRAY"  "$RESET" ;;
+    esac
+}
 
-        ai   = b $6 r
-        loc  = $2 ":" $3 " [" $4 "." $5 "]"
-        printf "%s\t%s  %-16s  %-10s\n", $1, icon, ai, loc
+tool_color() {
+    case "$1" in
+        claude) printf '%s' "$PEACH" ;;
+        gemini) printf '%s' "$SKY"   ;;
+        *)      printf '%s' "$GRAY"  ;;
+    esac
+}
+
+format_list() {
+    "$PLUGIN_DIR/scripts/detect.sh" | awk -F'\t' \
+        -v green="$GREEN" -v gray="$GRAY" \
+        -v peach="$PEACH" -v sky="$SKY" -v dim="$DIM" -v r="$RESET" '
+    {
+        pane_id=$1; ai=$6; state=$7; summary=$8
+        loc = $2 ":" $3 " [" $4 "." $5 "]"
+
+        if (state == "running")  { s_icon = green "▶" r; s_label = green "running" r }
+        else                     { s_icon = gray  "○" r; s_label = gray  "idle   " r }
+
+        if (ai == "claude")      { t_icon = peach "✦" r; t_color = peach }
+        else if (ai == "gemini") { t_icon = sky   "✧" r; t_color = sky   }
+        else                     { t_icon = gray  "◦" r; t_color = gray  }
+
+        t_label = t_color ai r
+
+        summary_col = (summary != "") ? dim summary r : ""
+
+        printf "%s\t%s %s  %s %-8s  %-22s  %s\n",
+            pane_id, s_icon, s_label, t_icon, t_label, loc, summary_col
     }'
 }
 
@@ -50,10 +79,13 @@ SELECTED=$(echo "$LIST" | fzf \
     --preview-window="right:55%:wrap:border-left" \
     --bind="ctrl-p:up,ctrl-n:down" \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/detect.sh\" | awk -F'\t' \
-        '{if(\$7==\"running\") icon=\"▶ running\"; \
-          else if(\$7==\"waiting\") icon=\"◎ waiting\"; \
-          else icon=\"○ idle   \"; \
-          printf \"%s\\t%s  %-16s  %-10s\\n\",\$1,icon,\$6,\$2\":\"$3\" [\"$4\".\"$5\"]\"}' )" \
+        -v r=\"$RESET\" -v g=\"$GREEN\" -v gr=\"$GRAY\" \
+        -v p=\"$PEACH\" -v s=\"$SKY\" -v d=\"$DIM\" \
+        '{st=(\$7==\"running\") ? g\"▶\"r\" \"g\"running\"r : gr\"○\"r\" \"gr\"idle   \"r; \
+          ti=(\$6==\"claude\") ? p\"✦\"r : (\$6==\"gemini\") ? s\"✧\"r : gr\"◦\"r; \
+          tc=(\$6==\"claude\") ? p : (\$6==\"gemini\") ? s : gr; \
+          sm=(\$8!=\"\") ? d\$8 r : \"\"; \
+          printf \"%s\t%s %s  %s %-8s  %-22s  %s\n\",\$1,ti,st,ti,tc\$6 r,\$2\":\"\$3\" [\"$4\".\"$5\"]\",sm}')" \
 )
 
 [ -z "$SELECTED" ] && exit 0
