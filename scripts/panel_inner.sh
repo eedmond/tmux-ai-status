@@ -19,7 +19,7 @@ if [ -z "$LIST" ]; then
     exit 0
 fi
 
-HEADER="${BLUE}enter/ctrl-→${RESET}: jump   ${BLUE}ctrl-l/h${RESET}: focus preview/list   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
+HEADER="${BLUE}enter/ctrl-→${RESET}: jump   ${BLUE}ctrl-l${RESET}: preview mode   ${BLUE}ctrl-k${RESET}: list mode   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
 
 # Pick a random available port for fzf --listen
 PORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('',0)); print(s.getsockname()[1]); s.close()" 2>/dev/null)
@@ -50,17 +50,17 @@ SELECTED=$(echo "$LIST" | fzf \
     $LISTEN_ARG \
     --delimiter=$'\t' \
     --with-nth=2 \
-    --prompt=" Assistants › " \
+    --prompt=" Assistants > " \
     --header="$HEADER" \
     --header-first \
-    --preview='tmux capture-pane -t {1} -p 2>/dev/null | tail -200' \
+    --preview='content=$(tmux capture-pane -t {1} -p 2>/dev/null | grep -v "^[[:space:]]*$"); [ -n "$content" ] && printf "%s\n" "$content" || printf "[pane {1} — no content captured]\n"' \
     --preview-window="right:55%:wrap:border-left" \
     --cycle \
     --bind='j:up,k:down' \
     --bind='ctrl-p:up,ctrl-n:down' \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/panel_list.sh\")" \
-    --bind='ctrl-l:unbind(j,k)+bind(j:preview-down,k:preview-up)+change-prompt( Preview › )' \
-    --bind='ctrl-h:unbind(j,k)+bind(j:up,k:down)+change-prompt( Assistants › )' \
+    --bind='ctrl-l:unbind(j)+unbind(k)+bind(j:preview-down)+bind(k:preview-up)' \
+    --bind='ctrl-k:unbind(j)+unbind(k)+bind(j:up)+bind(k:down)' \
     --bind="ctrl-right:execute(echo {1} > \"$TMPFILE\")+abort" \
 )
 
