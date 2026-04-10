@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # panel_inner.sh — fzf agent list inside the popup.
-# focus event: switches the background tmux window to the selected agent (live, no refresh).
-# ctrl-l / <leader>+l: write STAY sentinel and close popup (stay at agent window).
 # enter: write pane_id and close popup (jump to that pane).
 
 PLUGIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
@@ -10,7 +8,7 @@ TMPFILE="$1"
 BLUE=$'\e[38;2;137;180;250m'
 RESET=$'\e[0m'
 
-HEADER="${BLUE}enter${RESET}: jump   ${BLUE}ctrl-l/<leader>+l${RESET}: interact inline   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
+HEADER="${BLUE}enter${RESET}: jump   ${BLUE}ctrl-r${RESET}: refresh   ${BLUE}esc/q${RESET}: close"
 
 CACHE="${HOME}/.cache/tmux-ai-status/panel-list"
 
@@ -54,7 +52,6 @@ SELECTED=$("${LIST_SOURCE[@]}" | fzf \
     --bind='j:up,k:down' \
     --bind='ctrl-p:up,ctrl-n:down' \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/panel_list.sh\")" \
-    --bind="ctrl-l:execute-silent(printf 'STAY' > '$TMPFILE')+abort" \
 )
 
 [ -z "$SELECTED" ] && exit 0
