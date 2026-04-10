@@ -40,9 +40,9 @@ format_list() {
         pane_id=$1; ai=$6; state=$7; summary=$8
         loc = $2 ":" $3 " [" $4 "." $5 "]"
 
-        if (state == "running")  { s_icon = green "▶" r; s_label = green "running" r }
+        if (state == "running")     { s_icon = green  "▶" r; s_label = green  "running" r }
         else if (state == "asking") { s_icon = yellow "?" r; s_label = yellow "asking " r }
-        else                     { s_icon = gray  "○" r; s_label = gray  "idle   " r }
+        else                        { s_icon = gray   "○" r; s_label = gray   "waiting" r }
 
         if (ai == "claude")      { t_icon = peach "◉" r; t_color = peach }
         else if (ai == "gemini") { t_icon = sky   "✧" r; t_color = sky   }
@@ -84,7 +84,7 @@ SELECTED=$(echo "$LIST" | fzf \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/detect.sh\" | awk -F'\t' \
         -v r=\"$RESET\" -v g=\"$GREEN\" -v gr=\"$GRAY\" \
         -v p=\"$PEACH\" -v s=\"$SKY\" -v d=\"$DIM\" \
-        '{st=(\$7==\"running\") ? g\"▶\"r\" \"g\"running\"r : gr\"○\"r\" \"gr\"idle   \"r; \
+        '{st=(\$7==\"running\") ? g\"▶\"r\" \"g\"running\"r : (\$7==\"asking\") ? y\"?\"r\" \"y\"asking \"r : gr\"○\"r\" \"gr\"waiting\"r; \
           ti=(\$6==\"claude\") ? p\"◉\"r : (\$6==\"gemini\") ? s\"✧\"r : gr\"◦\"r; \
           tc=(\$6==\"claude\") ? p : (\$6==\"gemini\") ? s : gr; \
           sm=(\$8!=\"\") ? d\$8 r : \"\"; \

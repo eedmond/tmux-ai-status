@@ -71,18 +71,17 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
     [ -z "$ai_type" ] && continue
 
     # State detection.
-    # - Capture 3 lines for "running" (tight window avoids old spinners in history)
-    # - Capture 10 lines for "asking" (question/choices may span several lines)
-    last3=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
+    # Running: only braille spinner chars are reliable — text like "Thinking...",
+    # "Working...", "Running..." appears in Claude's output after completion.
+    # Spinners are animation-only and won't appear in regular output text.
+    # Capture 5 lines: spinner may be pushed up slightly by streaming output.
+    last5=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
     content=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
-    state="idle"
-    if printf '%s\n' "$last3" | grep -qE \
-        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
+    state="waiting"
+    if printf '%s\n' "$last5" | grep -qE '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]'; then
         state="running"
     elif printf '%s\n' "$content" | grep -qE \
         '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
-        # ❯ alone is Claude's generic input cursor; only match when followed by
-        # a known option word (tool permission dialogs, confirmation prompts)
         state="asking"
     fi
 

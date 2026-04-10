@@ -9,7 +9,7 @@ AI_PATTERN="${AI_PATTERN:-claude|gemini}"
 total=0
 running=0
 asking=0
-idle=0
+waiting=0
 
 while IFS=' ' read -r pane_id pid cmd; do
     matched=0
@@ -33,16 +33,15 @@ while IFS=' ' read -r pane_id pid cmd; do
 
     total=$((total + 1))
 
-    content=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
+    content=$(tmux capture-pane -t "$pane_id" -p -S -5 2>/dev/null)
     last10=$(tmux capture-pane -t "$pane_id" -p -S -10 2>/dev/null)
-    if printf '%s\n' "$content" | grep -qE \
-        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
+    if printf '%s\n' "$content" | grep -qE '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]'; then
         running=$((running + 1))
     elif printf '%s\n' "$last10" | grep -qE \
         '❯[[:space:]]+(Yes|No|Allow|Deny|Proceed|Cancel|Continue|Skip|Approve|y|n)|\[y/n\]|\[Y/n\]|\[y/N\]|Yes, and don'"'"'t ask'; then
         asking=$((asking + 1))
     else
-        idle=$((idle + 1))
+        waiting=$((waiting + 1))
     fi
 
 done < <(tmux list-panes -a \
@@ -59,7 +58,7 @@ RESET="#[default]"
 
 output="${BLUE}󱙺 ${total}${RESET}"
 [ "$running" -gt 0 ] && output="${output}  ${GREEN}▶ ${running}${RESET}"
-[ "$asking"  -gt 0 ] && output="${output}  ${YELLOW}? ${asking}${RESET}"
-[ "$idle"    -gt 0 ] && output="${output}  ${GRAY}○ ${idle}${RESET}"
+[ "$asking"   -gt 0 ] && output="${output}  ${YELLOW}? ${asking}${RESET}"
+[ "$waiting"  -gt 0 ] && output="${output}  ${GRAY}○ ${waiting}${RESET}"
 
 printf '%s' "$output"
