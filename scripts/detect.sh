@@ -70,11 +70,13 @@ while read -r pane_id session window_name window_idx pane_idx pid cmd; do
 
     [ -z "$ai_type" ] && continue
 
-    # State detection via captured pane content (last 6 lines)
-    content=$(tmux capture-pane -t "$pane_id" -p -S -6 2>/dev/null)
+    # State detection: capture only the last 3 lines so old spinner chars
+    # scrolled into history don't trigger false "running" matches.
+    # ◒ and ↓ are excluded — they appear in Claude's idle prompt UI.
+    content=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
     state="idle"
     if printf '%s' "$content" | grep -qE \
-        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]|◒|↓'; then
+        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
         state="running"
     fi
 

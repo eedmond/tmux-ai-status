@@ -32,9 +32,9 @@ while IFS=' ' read -r pane_id pid cmd; do
 
     total=$((total + 1))
 
-    content=$(tmux capture-pane -t "$pane_id" -p -S -4 2>/dev/null)
+    content=$(tmux capture-pane -t "$pane_id" -p -S -3 2>/dev/null)
     if printf '%s' "$content" | grep -qE \
-        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]|◒|↓'; then
+        '[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]|Thinking[….]|Working[….]|Running[^a-zA-Z]'; then
         running=$((running + 1))
     else
         idle=$((idle + 1))

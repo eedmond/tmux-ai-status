@@ -17,7 +17,7 @@ RESET=$'\e[0m'
 # Per-tool icon and color
 tool_icon() {
     case "$1" in
-        claude) printf '%s✦%s' "$PEACH" "$RESET" ;;
+        claude) printf '%s◉%s' "$PEACH" "$RESET" ;;
         gemini) printf '%s✧%s' "$SKY"   "$RESET" ;;
         *)      printf '%s◦%s' "$GRAY"  "$RESET" ;;
     esac
@@ -42,7 +42,7 @@ format_list() {
         if (state == "running")  { s_icon = green "▶" r; s_label = green "running" r }
         else                     { s_icon = gray  "○" r; s_label = gray  "idle   " r }
 
-        if (ai == "claude")      { t_icon = peach "✦" r; t_color = peach }
+        if (ai == "claude")      { t_icon = peach "◉" r; t_color = peach }
         else if (ai == "gemini") { t_icon = sky   "✧" r; t_color = sky   }
         else                     { t_icon = gray  "◦" r; t_color = gray  }
 
@@ -77,12 +77,13 @@ SELECTED=$(echo "$LIST" | fzf \
     --header-first \
     --preview="tmux capture-pane -t {1} -p -S -50 2>/dev/null" \
     --preview-window="right:55%:wrap:border-left" \
+    --cycle \
     --bind="ctrl-p:up,ctrl-n:down" \
     --bind="ctrl-r:reload(\"$PLUGIN_DIR/scripts/detect.sh\" | awk -F'\t' \
         -v r=\"$RESET\" -v g=\"$GREEN\" -v gr=\"$GRAY\" \
         -v p=\"$PEACH\" -v s=\"$SKY\" -v d=\"$DIM\" \
         '{st=(\$7==\"running\") ? g\"▶\"r\" \"g\"running\"r : gr\"○\"r\" \"gr\"idle   \"r; \
-          ti=(\$6==\"claude\") ? p\"✦\"r : (\$6==\"gemini\") ? s\"✧\"r : gr\"◦\"r; \
+          ti=(\$6==\"claude\") ? p\"◉\"r : (\$6==\"gemini\") ? s\"✧\"r : gr\"◦\"r; \
           tc=(\$6==\"claude\") ? p : (\$6==\"gemini\") ? s : gr; \
           sm=(\$8!=\"\") ? d\$8 r : \"\"; \
           printf \"%s\t%s %s  %s %-8s  %-22s  %s\n\",\$1,ti,st,ti,tc\$6 r,\$2\":\"\$3\" [\"$4\".\"$5\"]\",sm}')" \
